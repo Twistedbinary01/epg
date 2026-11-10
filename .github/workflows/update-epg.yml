@@ -1,0 +1,46 @@
+name: Update EPG
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # every 6 hours
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build cleaned guide
+        env:
+          EPG_SOURCE_URL: ${{ secrets.EPG_SOURCE_URL }}
+        run: |
+          mkdir site
+          python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
+          # refuse to publish an empty or broken guide
+          test "$(grep -c '<programme ' site/epg_xmltv.xml)" -gt 50000
+          echo "EPG ready" > site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
