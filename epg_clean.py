@@ -25,6 +25,7 @@ What it does:
   * adds a 'Showtime West' channel = Showtime Showcase West shifted by SHOWTIME_WEST_SHIFT_HOURS
   * writes strict XMLTV (no non-standard attributes), all times in UTC
 """
+import unicodedata
 import sys, os, ssl, time, re, gzip, io, datetime, calendar, collections, urllib.request
 import xml.etree.ElementTree as ET
 
@@ -86,6 +87,14 @@ LOGO_OVERRIDES = {
 MOJI = re.compile("\u00c3.|\u00c2.|\u00e2\u20ac|\u00c5.|\u00c4.")
 
 EXTRA_CHANNEL_IDS = frozenset(['FoxSports503.au', '10BoldAdelaide.au', '10BoldHobart.au', '10BoldMelbourne.au', '10BoldPerth.au', '10BoldSydney.au', '10PeachAdelaide.au', '10PeachBrisbane.au', '10PeachHobart.au', '10PeachMelbourne.au', '10PeachPerth.au', '10PeachSydney.au', '7flixAdelaide.au', '7flixBrisbane.au', '7flixMelbourne.au', '7flixPerth.au', '7flixSydney.au', '7mateAdelaide.au', '7mateBrisbane.au', '7mateHobart.au', '7mateMelbourne.au', '7matePerth.au', '7mateSydney.au', '9Adelaide.au', '9GoAdelaide.au', '9GoBrisbane.au', '9GoHobart.au', '9GoMelbourne.au', '9GoPerth.au', '9GoSydney.au', '9Hobart.au', '9LifeAdelaide.au', '9LifeBrisbane.au', '9LifeHobart.au', '9LifePerth.au', '9Melbourne.au', '9Perth.au', '9RushAdelaide.au', '9RushBrisbane.au', '9RushMelbourne.au', '9RushPerth.au', '9RushSydney.au', 'ABCAdelaide.au', 'ABCHobart.au', 'ABCKidsAdelaide.au', 'ABCKidsBrisbane.au', 'ABCKidsHobart.au', 'ABCKidsMelbourne.au', 'ABCKidsPerth.au', 'ABCNewsAdelaide.au', 'ABCNewsHobart.au', 'ABCNewsMelbourne.au', 'Canal.2.de.México.(Canal.Las.Estrellas.-.XEW).mx', 'Canal.22.de.México.mx', 'Canal.Adrenalina.Sports.Network.mx', 'Canal.Antena.3.mx', 'Canal.Bandamax.mx', 'Canal.BitMe.mx', 'Canal.Cartoonito.(México).mx', 'Canal.Disney.Channel.(México).mx', 'Canal.Disney.Junior.(México).mx', 'Canal.Distrito.Comedia.mx', 'Canal.ESNE.TV.mx', 'Canal.Elgourmet.mx', 'Canal.Enlace.(TBN).mx', 'Canal.Europa.Europa.mx', 'Canal.FX.(México).mx', 'Canal.Film.and.Arts.mx', 'Canal.Galicia.TV.mx', 'Canal.Golden.Multiplex.mx', 'Canal.HBO.(México).mx', 'Canal.HBO.Mundi.mx', 'Canal.HBO.Plus.mx', 'Canal.HBO.Pop.mx', 'Canal.HBO.Xtreme.mx', 'Canal.MTV.(México).mx', 'Canal.MTV.00s.mx', 'Canal.MTV.80s.mx', 'Canal.MTV.Hits.mx', 'Canal.María.Visión.mx', 'Canal.Mexiquense.TV.mx', 'Canal.Milenio.TV.mx', 'Canal.NFL.Network.mx', 'Canal.NHK.World.mx', 'Canal.NickMusic.mx', 'Canal.PX.Sports.mx', 'Canal.Real.Madrid.TV.mx', 'Canal.TV.Azteca.Corazón.mx', 'Canal.TV.Azteca.Mundo.mx', 'Canal.TV5MONDE.mx', 'Canal.TeenNick.mx', 'Canal.Telehit.Música.Plus.mx', 'Canal.Telehit.Música.mx', 'Canal.Telehit.mx', 'Canal.Tooncast.mx', 'Canal.Unicable.(México).mx', 'Canal.Universal.Cinema.mx', 'Canal.Universal.Comedy.mx', 'Canal.Universal.Crime.mx', 'Canal.Universal.Premiere.mx', 'Canal.Universal.Reality.mx', 'Canal.¡HOLA!.TV.mx', 'NITVSydney.au', 'SBSFoodHobart.au', 'SBSHobart.au'])
+
+def safe_id(c):
+    """ASCII-only version of an id (accents/brackets/& confuse some players)."""
+    if c not in EXTRA_CHANNEL_IDS:
+        return c
+    a = "".join(ch for ch in unicodedata.normalize("NFD", c) if unicodedata.category(ch) != "Mn")
+    return re.sub(r"[^A-Za-z0-9._-]", "_", a.encode("ascii", "ignore").decode())
+
 
 def demoji(s):
     if not s or not MOJI.search(s):
@@ -204,9 +213,10 @@ def main(src, out, extra=()):
             print("WARNING: supplementary guide skipped (%s): %s" % (type(ex).__name__, ex))
             stats["supplementary guides skipped"] += 1
             continue
-        for cid, lst in sup.items():
+        for cid0, lst in sup.items():
+            cid = safe_id(cid0)
             if cid not in channels:
-                channels[cid] = {"names": sup_meta.get(cid) or [cid], "icon": None}; order.append(cid)
+                channels[cid] = {"names": sup_meta.get(cid0) or [cid], "icon": None}; order.append(cid)
                 stats["extra channels added"] += 1
             base_end = max((x[1] for x in progs.get(cid, [])), default=0)
             if max(x[1] for x in lst) >= base_end:
