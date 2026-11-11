@@ -23,6 +23,7 @@ jobs:
       - name: Build cleaned guide
         env:
           EPG_SOURCE_URL: ${{ secrets.EPG_SOURCE_URL }}
+           EPG_INSECURE_TLS: "1"
         run: |
           mkdir site
           python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
