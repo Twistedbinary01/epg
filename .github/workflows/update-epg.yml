@@ -6,7 +6,7 @@ on:
       - ".github/workflows/update-epg.yml"
       - "epg_clean.py"
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 */12 * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,24 +28,16 @@ jobs:
         env:
           EPG_SOURCE_URL: ${{ secrets.EPG_SOURCE_URL }}
           EPG_INSECURE_TLS: "1"
-          EPG_SUPPLEMENT_URLS: "https://epgshare01.online/epgshare01/epg_ripper_CA2.xml.gz"
+          EPG_SUPPLEMENT_URLS: >-
+            https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_CA2.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_US2.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz
         run: |
           mkdir site
           python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
           test "$(grep -c '<programme ' site/epg_xmltv.xml)" -gt 50000
           echo "EPG ready" > site/index.html
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/configur
