@@ -40,4 +40,17 @@ jobs:
           test "$(grep -c '<programme ' site/epg_xmltv.xml)" -gt 50000
           echo "EPG ready" > site/index.html
 
-      - uses: actions/configur
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
