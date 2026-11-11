@@ -21,13 +21,15 @@ What it does:
   * removes duplicate programmes, trims overlaps, drops zero-length programmes
   * drops channels with no listings and programmes with no channel
   * applies the logo overrides in LOGO_OVERRIDES below
+  * drops programmes that ended more than PAST_HOURS_KEPT hours ago
   * adds a 'Showtime West' channel = Showtime Showcase West shifted by SHOWTIME_WEST_SHIFT_HOURS
   * writes strict XMLTV (no non-standard attributes), all times in UTC
 """
-import sys, os, ssl, re, gzip, io, datetime, calendar, collections, urllib.request
+import sys, os, ssl, time, re, gzip, io, datetime, calendar, collections, urllib.request
 import xml.etree.ElementTree as ET
 
 SHOWTIME_WEST_SHIFT_HOURS = 1
+PAST_HOURS_KEPT = 12   # drop programmes that ended more than this many hours ago
 SHOWTIME_WEST_SOURCE_ID = "showtimeshowcasepacific.us"
 SHOWTIME_WEST_ID = "showtimewest.us"
 SHOWTIME_WEST_ICON = "https://purecast.us/logos/united-states/showtime-us.png"
@@ -116,6 +118,7 @@ def fmt(u):
     return datetime.datetime.fromtimestamp(u, datetime.timezone.utc).strftime("%Y%m%d%H%M%S") + " +0000"
 
 def open_source(src):
+    """Open a URL or local path as a binary stream, un-gzipping on the fly (low memory)."""
     if re.match(r"https?://", src):
         req = urllib.request.Request(src, headers={"User-Agent": "epg-clean/1.0"})
         ctx = None
@@ -125,12 +128,13 @@ def open_source(src):
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             print("WARNING: TLS certificate checking is OFF for this download")
-        data = urllib.request.urlopen(req, timeout=300, context=ctx).read()
+        raw = urllib.request.urlopen(req, timeout=300, context=ctx)
     else:
-        data = open(src, "rb").read()
-    if data[:2] == b"\x1f\x8b":
-        data = gzip.decompress(data)
-    return io.BytesIO(data)
+        raw = open(src, "rb")
+    br = io.BufferedReader(raw, buffer_size=1 << 20)
+    if br.peek(2)[:2] == b"\x1f\x8b":
+        return gzip.GzipFile(fileobj=br)
+    return br
 
 def main(src, out, extra=()):
     stats = collections.Counter()
@@ -202,6 +206,12 @@ def main(src, out, extra=()):
                 stats["channels updated from supplementary guides"] += 1
             else:
                 stats["supplement not newer, kept original"] += 1
+
+    cutoff = int(time.time()) - PAST_HOURS_KEPT * 3600
+    for cid in list(progs):
+        before = len(progs[cid])
+        progs[cid] = [x for x in progs[cid] if x[1] >= cutoff]
+        stats["old programmes dropped"] += before - len(progs[cid])
 
     kept = {}
     for cid, lst in progs.items():
