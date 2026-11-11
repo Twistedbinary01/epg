@@ -18,7 +18,7 @@ What it does:
   * adds a 'Showtime West' channel = Showtime Showcase West shifted by SHOWTIME_WEST_SHIFT_HOURS
   * writes strict XMLTV (no non-standard attributes), all times in UTC
 """
-import sys, re, gzip, io, datetime, calendar, collections, urllib.request
+import sys, os, ssl, re, gzip, io, datetime, calendar, collections, urllib.request
 import xml.etree.ElementTree as ET
 
 SHOWTIME_WEST_SHIFT_HOURS = 1
@@ -112,7 +112,14 @@ def fmt(u):
 def open_source(src):
     if re.match(r"https?://", src):
         req = urllib.request.Request(src, headers={"User-Agent": "epg-clean/1.0"})
-        data = urllib.request.urlopen(req, timeout=300).read()
+        ctx = None
+        if os.environ.get("EPG_INSECURE_TLS") == "1":
+            # opt-in only: for sources whose certificate is self-signed
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            print("WARNING: TLS certificate checking is OFF for this download")
+        data = urllib.request.urlopen(req, timeout=300, context=ctx).read()
     else:
         data = open(src, "rb").read()
     if data[:2] == b"\x1f\x8b":
