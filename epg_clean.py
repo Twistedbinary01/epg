@@ -85,6 +85,8 @@ LOGO_OVERRIDES = {
 
 MOJI = re.compile("\u00c3.|\u00c2.|\u00e2\u20ac|\u00c5.|\u00c4.")
 
+EXTRA_CHANNEL_IDS = frozenset(['10BoldAdelaide.au', '10BoldHobart.au', '10BoldMelbourne.au', '10BoldPerth.au', '10BoldSydney.au', '10PeachAdelaide.au', '10PeachBrisbane.au', '10PeachHobart.au', '10PeachMelbourne.au', '10PeachPerth.au', '10PeachSydney.au', '7flixAdelaide.au', '7flixBrisbane.au', '7flixMelbourne.au', '7flixPerth.au', '7flixSydney.au', '7mateAdelaide.au', '7mateBrisbane.au', '7mateHobart.au', '7mateMelbourne.au', '7matePerth.au', '7mateSydney.au', '9Adelaide.au', '9GoAdelaide.au', '9GoBrisbane.au', '9GoHobart.au', '9GoMelbourne.au', '9GoPerth.au', '9GoSydney.au', '9Hobart.au', '9LifeAdelaide.au', '9LifeBrisbane.au', '9LifeHobart.au', '9LifePerth.au', '9Melbourne.au', '9Perth.au', '9RushAdelaide.au', '9RushBrisbane.au', '9RushMelbourne.au', '9RushPerth.au', '9RushSydney.au', 'ABCAdelaide.au', 'ABCHobart.au', 'ABCKidsAdelaide.au', 'ABCKidsBrisbane.au', 'ABCKidsHobart.au', 'ABCKidsMelbourne.au', 'ABCKidsPerth.au', 'ABCNewsAdelaide.au', 'ABCNewsHobart.au', 'ABCNewsMelbourne.au', 'Canal.2.de.México.(Canal.Las.Estrellas.-.XEW).mx', 'Canal.22.de.México.mx', 'Canal.Adrenalina.Sports.Network.mx', 'Canal.Antena.3.mx', 'Canal.Bandamax.mx', 'Canal.BitMe.mx', 'Canal.Cartoonito.(México).mx', 'Canal.Disney.Channel.(México).mx', 'Canal.Disney.Junior.(México).mx', 'Canal.Distrito.Comedia.mx', 'Canal.ESNE.TV.mx', 'Canal.Elgourmet.mx', 'Canal.Enlace.(TBN).mx', 'Canal.Europa.Europa.mx', 'Canal.FX.(México).mx', 'Canal.Film.and.Arts.mx', 'Canal.Galicia.TV.mx', 'Canal.Golden.Multiplex.mx', 'Canal.HBO.(México).mx', 'Canal.HBO.Mundi.mx', 'Canal.HBO.Plus.mx', 'Canal.HBO.Pop.mx', 'Canal.HBO.Xtreme.mx', 'Canal.MTV.(México).mx', 'Canal.MTV.00s.mx', 'Canal.MTV.80s.mx', 'Canal.MTV.Hits.mx', 'Canal.María.Visión.mx', 'Canal.Mexiquense.TV.mx', 'Canal.Milenio.TV.mx', 'Canal.NFL.Network.mx', 'Canal.NHK.World.mx', 'Canal.NickMusic.mx', 'Canal.PX.Sports.mx', 'Canal.Real.Madrid.TV.mx', 'Canal.TV.Azteca.Corazón.mx', 'Canal.TV.Azteca.Mundo.mx', 'Canal.TV5MONDE.mx', 'Canal.TeenNick.mx', 'Canal.Telehit.Música.Plus.mx', 'Canal.Telehit.Música.mx', 'Canal.Telehit.mx', 'Canal.Tooncast.mx', 'Canal.Unicable.(México).mx', 'Canal.Universal.Cinema.mx', 'Canal.Universal.Comedy.mx', 'Canal.Universal.Crime.mx', 'Canal.Universal.Premiere.mx', 'Canal.Universal.Reality.mx', 'Canal.¡HOLA!.TV.mx', 'NITVSydney.au', 'SBSFoodHobart.au', 'SBSHobart.au'])
+
 def demoji(s):
     if not s or not MOJI.search(s):
         return s
@@ -179,11 +181,12 @@ def main(src, out, extra=()):
     sup_urls = list(extra) + [u for u in re.split(r"[\s,]+", os.environ.get("EPG_SUPPLEMENT_URLS", "")) if u]
     for url in sup_urls:
         sup = collections.defaultdict(list)
+        sup_meta = {}
         try:
             for ev, el in ET.iterparse(open_source(url), events=("end",)):
                 if el.tag == "programme":
                     cid = el.get("channel")
-                    if cid in channels:
+                    if cid in channels or cid in EXTRA_CHANNEL_IDS:
                         try:
                             s_, e_ = to_utc(el.get("start")), to_utc(el.get("stop"))
                             t_ = clean(el.findtext("title"))
@@ -194,12 +197,17 @@ def main(src, out, extra=()):
                             sup[cid].append([s_, e_, t_, d_ or None])
                     el.clear()
                 elif el.tag == "channel":
+                    if el.get("id") in EXTRA_CHANNEL_IDS:
+                        sup_meta[el.get("id")] = [clean(d.text) for d in el.findall("display-name") if clean(d.text)]
                     el.clear()
         except Exception as ex:
             print("WARNING: supplementary guide skipped (%s): %s" % (type(ex).__name__, ex))
             stats["supplementary guides skipped"] += 1
             continue
         for cid, lst in sup.items():
+            if cid not in channels:
+                channels[cid] = {"names": sup_meta.get(cid) or [cid], "icon": None}; order.append(cid)
+                stats["extra channels added"] += 1
             base_end = max((x[1] for x in progs.get(cid, [])), default=0)
             if max(x[1] for x in lst) >= base_end:
                 progs[cid] = lst
