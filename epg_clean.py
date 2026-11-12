@@ -263,6 +263,15 @@ def main(src, out, extra=()):
     for cid, url in LOGO_OVERRIDES.items():
         if cid in channels:
             channels[cid]["icon"] = url
+    # optional: icons taken from the playlist (playlist_logos.json next to this script)
+    try:
+        import json as _json
+        _pl = _json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "playlist_logos.json"), encoding="utf-8"))
+        for _cid, _url in _pl.items():
+            if _cid in channels:
+                channels[_cid]["icon"] = _url
+    except (OSError, ValueError):
+        pass
 
     def esc(x):
         return (x.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
