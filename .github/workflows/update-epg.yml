@@ -36,6 +36,7 @@ jobs:
             https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz
             https://raw.githubusercontent.com/ferteque/Curated-M3U-Repository/main/epg2.xml.gz
             https://www.open-epg.com/files/canada.xml.gz
+            https://www.open-epg.com/files/brazil.xml.gz
         run: |
           mkdir site
           python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
