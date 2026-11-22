@@ -29,6 +29,7 @@ jobs:
           EPG_SOURCE_URL: ${{ secrets.EPG_SOURCE_URL }}
           EPG_INSECURE_TLS: "1"
           EPG_SUPPLEMENT_URLS: >-
+            ${{ secrets.PURECAST_LIVE_URL }}
             https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz
             https://epgshare01.online/epgshare01/epg_ripper_CA2.xml.gz
             https://epgshare01.online/epgshare01/epg_ripper_US2.xml.gz
