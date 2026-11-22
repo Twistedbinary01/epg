@@ -266,7 +266,18 @@ def main(src, out, extra=()):
         if cid not in channels:
             channels[cid] = {"names": [cid], "icon": None}; order.append(cid)
             stats["channel stubs added for orphan listings"] += 1
-    final = [c for c in order if c in kept]
+    # channels from the playlist (playlist_logos.json) are kept even without listings,
+    # so players that take logos from the guide (Purecast) can still show them
+    try:
+        import json as _json0
+        _pl0 = _json0.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "playlist_logos.json"), encoding="utf-8"))
+    except (OSError, ValueError):
+        _pl0 = {}
+    for _cid in _pl0:
+        if _cid not in channels:
+            channels[_cid] = {"names": [_cid], "icon": None}; order.append(_cid)
+            stats["logo-only channels added"] += 1
+    final = [c for c in order if c in kept or c in _pl0]
     stats["channels without listings removed"] = len(order) - len(final)
 
     if SHOWTIME_WEST_SOURCE_ID in kept:
@@ -305,7 +316,7 @@ def main(src, out, extra=()):
         buf.write("  </channel>\n")
     n = 0
     for cid in final:
-        for s, e, t, d in kept[cid]:
+        for s, e, t, d in kept.get(cid, []):
             buf.write('  <programme start="%s" stop="%s" channel="%s">\n    <title>%s</title>\n' % (fmt(s), fmt(e), esc(cid), esc(t)))
             if d:
                 buf.write("    <desc>%s</desc>\n" % esc(d))
