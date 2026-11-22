@@ -1,0 +1,66 @@
+name: Update EPG
+
+on:
+  push:
+    paths:
+      - ".github/workflows/update-epg.yml"
+      - "epg_clean.py"
+  schedule:
+    - cron: "17 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build cleaned guide
+        env:
+          EPG_SOURCE_URL: ${{ secrets.EPG_SOURCE_URL }}
+          EPG_INSECURE_TLS: "1"
+          EPG_SUPPLEMENT_URLS: >-
+            ${{ secrets.PURECAST_LIVE_URL }}
+            https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_CA2.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_US2.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz
+            https://raw.githubusercontent.com/ferteque/Curated-M3U-Repository/main/epg2.xml.gz
+            https://www.open-epg.com/files/canada.xml.gz
+            https://www.open-epg.com/files/brazil.xml.gz
+            https://i.mjh.nz/PlutoTV/us.xml.gz
+            https://i.mjh.nz/PlutoTV/ca.xml.gz
+            https://i.mjh.nz/PlutoTV/gb.xml.gz
+            https://i.mjh.nz/Roku/all.xml.gz
+            https://i.mjh.nz/Plex/ca.xml.gz
+            https://i.mjh.nz/Plex/us.xml.gz
+        run: |
+          mkdir site
+          python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
+          test "$(grep -c '<programme ' site/epg_xmltv.xml)" -gt 50000
+          echo "EPG ready" > site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
