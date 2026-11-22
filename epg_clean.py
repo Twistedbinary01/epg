@@ -202,6 +202,7 @@ def main(src, out, extra=()):
     for url in sup_urls:
         sup = collections.defaultdict(list)
         sup_meta = {}
+        sup_icons = {}
         try:
             for ev, el in ET.iterparse(open_source(url), events=("end",)):
                 if el.tag == "programme":
@@ -219,6 +220,9 @@ def main(src, out, extra=()):
                 elif el.tag == "channel":
                     if is_extra(el.get("id")):
                         sup_meta[el.get("id")] = [clean(d.text) for d in el.findall("display-name") if clean(d.text)]
+                        _ic = el.find("icon")
+                        if _ic is not None and _ic.get("src") and PLUTO_ID.match(el.get("id") or ""):
+                            sup_icons[el.get("id")] = _ic.get("src")
                     el.clear()
         except Exception as ex:
             print("WARNING: supplementary guide skipped (%s): %s" % (type(ex).__name__, ex))
@@ -227,7 +231,7 @@ def main(src, out, extra=()):
         for cid0, lst in sup.items():
             cid = safe_id(cid0)
             if cid not in channels:
-                channels[cid] = {"names": sup_meta.get(cid0) or [cid], "icon": None}; order.append(cid)
+                channels[cid] = {"names": sup_meta.get(cid0) or [cid], "icon": sup_icons.get(cid0)}; order.append(cid)
                 stats["extra channels added"] += 1
             base_end = max((x[1] for x in progs.get(cid, [])), default=0)
             if max(x[1] for x in lst) >= base_end:
@@ -294,7 +298,7 @@ def main(src, out, extra=()):
         buf.write('  <channel id="%s">\n' % esc(cid))
         for n in (c["names"] or [cid]):
             buf.write("    <display-name>%s</display-name>\n" % esc(n))
-        if c["icon"] and not OMIT_CHANNEL_ICONS:
+        if c["icon"] and (not OMIT_CHANNEL_ICONS or PLUTO_ID.match(cid)):
             buf.write('    <icon src="%s"/>\n' % esc(c["icon"]))
         buf.write("  </channel>\n")
     n = 0
