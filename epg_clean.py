@@ -278,6 +278,7 @@ def main(src, out, extra=()):
     for cid, url in LOGO_OVERRIDES.items():
         if cid in channels:
             channels[cid]["icon"] = url
+    playlist_icon_ids = set()
     # optional: icons taken from the playlist (playlist_logos.json next to this script)
     try:
         import json as _json
@@ -285,6 +286,7 @@ def main(src, out, extra=()):
         for _cid, _url in _pl.items():
             if _cid in channels:
                 channels[_cid]["icon"] = _url
+                playlist_icon_ids.add(_cid)
     except (OSError, ValueError):
         pass
 
@@ -298,7 +300,7 @@ def main(src, out, extra=()):
         buf.write('  <channel id="%s">\n' % esc(cid))
         for n in (c["names"] or [cid]):
             buf.write("    <display-name>%s</display-name>\n" % esc(n))
-        if c["icon"] and (not OMIT_CHANNEL_ICONS or PLUTO_ID.match(cid)):
+        if c["icon"] and (not OMIT_CHANNEL_ICONS or PLUTO_ID.match(cid) or cid in playlist_icon_ids):
             buf.write('    <icon src="%s"/>\n' % esc(c["icon"]))
         buf.write("  </channel>\n")
     n = 0
