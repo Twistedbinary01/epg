@@ -49,6 +49,7 @@ jobs:
           python3 epg_clean.py "$EPG_SOURCE_URL" site/epg_xmltv.xml
           test "$(grep -c '<programme ' site/epg_xmltv.xml)" -gt 50000
           echo "EPG ready" > site/index.html
+          if [ -d logos ]; then cp -r logos site/logos; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
