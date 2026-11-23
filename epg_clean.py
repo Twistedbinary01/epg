@@ -103,8 +103,15 @@ except (OSError, ValueError):
     PLAYLIST_IDS = None  # no playlist list: accept every Pluto/Roku/Plex id
 
 
+def _ascii_id(c):
+    a = "".join(ch for ch in unicodedata.normalize("NFD", c) if unicodedata.category(ch) != "Mn")
+    return re.sub(r"[^A-Za-z0-9._-]", "_", a.encode("ascii", "ignore").decode())
+
+
 def is_extra(c):
     if c in EXTRA_CHANNEL_IDS:
+        return True
+    if c and c.endswith((".ar", ".fr")) and PLAYLIST_IDS is not None and _ascii_id(c) in PLAYLIST_IDS:
         return True
     if c and (PLUTO_ID.match(c) or FAST_ID.match(c)):
         return PLAYLIST_IDS is None or c in PLAYLIST_IDS
