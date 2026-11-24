@@ -43,6 +43,9 @@ jobs:
             https://i.mjh.nz/PlutoTV/gb.xml.gz
             https://epgshare01.online/epgshare01/epg_ripper_AR1.xml.gz
             https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz
+            https://epgshare01.online/epgshare01/epg_ripper_US_LOCALS1.xml.gz
+            http://www.free-epg.de/api/epg/ca.xml.gz
+            http://www.free-epg.de/api/epg/fr.xml.gz
             https://i.mjh.nz/Roku/all.xml.gz
             https://i.mjh.nz/Plex/ca.xml.gz
             https://i.mjh.nz/Plex/us.xml.gz
